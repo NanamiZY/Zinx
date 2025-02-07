@@ -1,1 +1,1 @@
-# Zinx
+# github.com/NanamiZY/Zinx

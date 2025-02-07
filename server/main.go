@@ -1,8 +1,8 @@
 package main
 
 import (
-	"Zinx/znet"
 	"fmt"
+	"github.com/NanamiZY/Zinx/znet"
 	"io"
 	"net"
 )
@@ -15,7 +15,7 @@ func main() {
 		return
 	}
 
-	//创建服务器gotoutine，负责从客户端goroutine读取粘包的数据，然后进行解析
+	//创建服务器goroutine，负责从客户端goroutine读取粘包的数据，然后进行解析
 
 	for {
 		conn, err := listener.Accept()

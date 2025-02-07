@@ -1,8 +1,8 @@
 package znet
 
 import (
-	"Zinx/ziface"
 	"fmt"
+	"github.com/NanamiZY/Zinx/ziface"
 	"net"
 )
 

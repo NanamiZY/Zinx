@@ -1,9 +1,9 @@
 package znet
 
 import (
-	"Zinx/utils"
-	"Zinx/ziface"
 	"fmt"
+	"github.com/NanamiZY/Zinx/utils"
+	"github.com/NanamiZY/Zinx/ziface"
 	"net"
 	"time"
 )
@@ -41,7 +41,7 @@ func NewServer(name string) ziface.IServer {
 // 开启网络服务
 func (s *Server) Start() {
 	fmt.Printf("[START] Server name: %s,listenner at IP: %s, Port %d is starting\n", s.Name, s.IP, s.Port)
-	fmt.Printf("[Zinx] Version: %s, MaxConn: %d,  MaxPacketSize: %d\n",
+	fmt.Printf("[github.com/NanamiZY/Zinx] Version: %s, MaxConn: %d,  MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,
 		utils.GlobalObject.MaxConn,
 		utils.GlobalObject.MaxPacketSize)
@@ -61,7 +61,7 @@ func (s *Server) Start() {
 			return
 		}
 		//监听成功
-		fmt.Println("start Zinx server ", s.Name, " succ,now listenning...")
+		fmt.Println("start github.com/NanamiZY/Zinx server ", s.Name, " succ,now listenning...")
 
 		//TODO server.go 应该有一个自动生成ID的方法
 		var cid uint32
@@ -87,7 +87,7 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Stop() {
-	fmt.Println("[STOP] Zinx server , name ", s.Name)
+	fmt.Println("[STOP] github.com/NanamiZY/Zinx server , name ", s.Name)
 	//TODO  Server.Stop() 将其他需要清理的连接信息或者其他信息 也要一并停止或者清理
 }
 

@@ -19,7 +19,7 @@ func ClientTest() {
 		return
 	}
 	for {
-		_, err := conn.Write([]byte("Zinx V0.5 client Test Message"))
+		_, err := conn.Write([]byte("github.com/NanamiZY/Zinx V0.5 client Test Message"))
 		if err != nil {
 			fmt.Println("write error err ", err)
 			return
@@ -37,7 +37,7 @@ func ClientTest() {
 }
 
 func TestServer(t *testing.T) {
-	s := NewServer("[zinx V0.1]")
+	s := NewServer("[github.com/NanamiZY/Zinx V0.1]")
 	go ClientTest()
 	s.Serve()
 }

@@ -1,11 +1,11 @@
 package znet
 
 import (
-	"Zinx/utils"
-	"Zinx/ziface"
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"github.com/NanamiZY/Zinx/utils"
+	"github.com/NanamiZY/Zinx/ziface"
 )
 
 // 封包拆包类实例，暂时不需要成员
