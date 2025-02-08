@@ -40,6 +40,8 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
+	//将新创建的Conn添加到连接管理中
+	c.TcpServer.GetConnMgr().Add(c)
 	return c
 }
 
@@ -131,14 +133,16 @@ func (c *Connection) Stop() {
 		return
 	}
 	c.isClosed = true
-	//TODO Connection Stop() 如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用
 
 	//关闭socket链接
 	c.Conn.Close()
 	//通知从缓冲队列读数据的业务，该链接已经关闭
 	c.ExitBuffChan <- true
+	//将连接从连接管理器中删除
+	c.TcpServer.GetConnMgr().Remove(c) //从ConnManager中删除conn
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
+	close(c.msgBuffChan)
 }
 
 // 从当前连接获取原始的socket TCPConn
