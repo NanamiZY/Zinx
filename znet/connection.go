@@ -3,12 +3,15 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"github.com/NanamiZY/Zinx/utils"
 	"github.com/NanamiZY/Zinx/ziface"
 	"io"
 	"net"
 )
 
 type Connection struct {
+	//当前Conn属于哪个Server
+	TcpServer ziface.IServer //当前conn属于哪个server,在conn初始化的时候可以添加
 	//当前连接的socket TCP套接字
 	Conn *net.TCPConn
 	//当前连接的ID 也可以称作为SessionID，ID全局唯一
@@ -19,16 +22,23 @@ type Connection struct {
 	MsgHandler ziface.IMsgHandle
 	//告知该连接已经退出/停止的channel
 	ExitBuffChan chan bool
+	//无缓冲通道，用于读、写两个goroutine之间的消息通信
+	msgChan chan []byte
+	//有缓冲通道，用于读、写两个goroutine之间的消息通信
+	msgBuffChan chan []byte
 }
 
 // 初始化连接模块的方法
-func NewConntion(conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
+func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	c := &Connection{
+		TcpServer:    server,
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
 		MsgHandler:   msgHandler,
 		ExitBuffChan: make(chan bool, 1),
+		msgChan:      make(chan []byte),
+		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
 	return c
 }
@@ -72,15 +82,40 @@ func (c *Connection) StartReader() {
 			conn: c,
 			msg:  msg,
 		}
-		//从路由Routers中找到注册绑定Conn的对应的Handle
-		go c.MsgHandler.DoMsgHandler(&req)
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			//已经启动工作池机制，将消息交给Worker处理
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		} else {
+			//从绑定好的消息和对应的处理方法中执行对应的Handle方法
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
+	}
+}
 
+// 写消息Goroutine， 用户将数据发送给客户端
+func (c *Connection) StartWriter() {
+	fmt.Println("[Writer Goroutine is running]")
+	defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
+
+	for {
+		select {
+		case data := <-c.msgChan:
+			//有数据要写给客户端
+			if _, err := c.Conn.Write(data); err != nil {
+				fmt.Println("Send Data error:, ", err, "Conn Writer exit")
+				return
+			}
+		case <-c.ExitBuffChan:
+			return
+		}
 	}
 }
 
 // 启动连接，让当前连接开始工作
 func (c *Connection) Start() {
 	go c.StartReader()
+
+	go c.StartWriter()
 
 	for {
 		select {
@@ -134,10 +169,6 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 		return errors.New("Pack error msg ")
 	}
 	//写回客户端
-	if _, err := c.Conn.Write(msg); err != nil {
-		fmt.Println("Write msg id ", msgId, " error ")
-		c.ExitBuffChan <- true
-		return errors.New("conn Write error")
-	}
+	c.msgChan <- msg
 	return nil
 }

@@ -19,6 +19,8 @@ type Server struct {
 	Port int
 	//当前Server的消息管理模块，用来绑定MsgId和对应的处理方法
 	MsgHandler ziface.IMsgHandle
+	//当前Server的连接管理器
+	ConnMgr ziface.IConnManager
 }
 
 /*
@@ -34,6 +36,7 @@ func NewServer() ziface.IServer {
 		IP:         utils.GlobalObject.Host,
 		Port:       utils.GlobalObject.TcpPort,
 		MsgHandler: NewMsgHandle(),
+		ConnMgr:    NewConnManager(),
 	}
 	return s
 }
@@ -48,6 +51,8 @@ func (s *Server) Start() {
 	fmt.Printf("[START] Server listenner at IP: %s,Port %d,is starting\n", s.IP, s.Port)
 	// 启动一个go去做服务端Linster业务
 	go func() {
+		//0.启动worker工作池机制
+		s.MsgHandler.StartWorkerPool()
 		//1.获取一个TCP的Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
@@ -103,4 +108,8 @@ func (s *Server) Serve() {
 
 func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
 	s.MsgHandler.AddRouter(msgId, router)
+}
+
+func (s *Server) GetConnMgr() ziface.IConnManager {
+	return s.ConnMgr
 }
