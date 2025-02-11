@@ -13,6 +13,14 @@ type IConnection interface {
 	GetConnID() uint32
 	//获取远程客户端地址信息
 	RemoteAddr() net.Addr
-	//直接将Message数据发送数据给远程的TCP客户端
+	//直接将Message数据发送数据给远程的TCP客户端(无缓冲)
 	SendMsg(msgId uint32, data []byte) error
+	//直接将Message数据发送数据给远程的TCP客户端(有缓冲)
+	SendBuffMsg(msgId uint32, data []byte) error //添加带缓冲发送消息接口
+	//设置连接属性
+	SetProperty(key string, value interface{})
+	//获取连接属性
+	GetProperty(key string) (interface{}, error)
+	//移除连接属性
+	RemoveProperty(key string)
 }

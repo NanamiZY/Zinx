@@ -7,6 +7,7 @@ import (
 	"github.com/NanamiZY/Zinx/ziface"
 	"io"
 	"net"
+	"sync"
 )
 
 type Connection struct {
@@ -26,6 +27,11 @@ type Connection struct {
 	msgChan chan []byte
 	//有缓冲通道，用于读、写两个goroutine之间的消息通信
 	msgBuffChan chan []byte
+
+	//连接属性
+	property map[string]interface{}
+	//保护连接数据修改的锁
+	propertyLock sync.RWMutex
 }
 
 // 初始化连接模块的方法
@@ -39,6 +45,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		property:     make(map[string]interface{}), //对连接属性map初始化
 	}
 	//将新创建的Conn添加到连接管理中
 	c.TcpServer.GetConnMgr().Add(c)
@@ -107,6 +114,14 @@ func (c *Connection) StartWriter() {
 				fmt.Println("Send Data error:, ", err, "Conn Writer exit")
 				return
 			}
+		case data, ok := <-c.msgBuffChan:
+			if ok {
+				//有数据要写给客户都安
+				if _, err := c.Conn.Write(data); err != nil {
+					fmt.Println("Send Data error:, ", err, "Conn Writer exit")
+					return
+				}
+			}
 		case <-c.ExitBuffChan:
 			return
 		}
@@ -119,6 +134,7 @@ func (c *Connection) Start() {
 
 	go c.StartWriter()
 
+	c.TcpServer.CallOnConnStart(c)
 	for {
 		select {
 		case <-c.ExitBuffChan:
@@ -133,6 +149,8 @@ func (c *Connection) Stop() {
 		return
 	}
 	c.isClosed = true
+
+	c.TcpServer.CallOnConnStop(c)
 
 	//关闭socket链接
 	c.Conn.Close()
@@ -175,4 +193,48 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	//写回客户端
 	c.msgChan <- msg
 	return nil
+}
+
+func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
+	if c.isClosed == true {
+		return errors.New("Connection closed when send buff msg")
+	}
+	//将data封包，并且发送
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack error msg id = ", msgId)
+		return errors.New("Pack error msg ")
+	}
+	//写回客户端
+	c.msgChan <- msg
+	return nil
+}
+
+// 设置连接属性
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	c.property[key] = value
+}
+
+// 获取连接属性
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("no property found")
+	}
+}
+
+// 移除连接属性
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
